@@ -28,8 +28,18 @@ var (
 type TypeBase int
 
 var baseTypes = []string{
-	"bool", "int64", "float64", "string", "[]byte", "civil.Date", "time.Time",
+	"bool", "int64", "float64", "int", "string", "[]byte", "civil.Date", "time.Time", "string",
 }
+
+// Bool TypeBase = iota
+//	Int64
+//	Float64
+//	Numeric
+//	String
+//	Bytes
+//	Date
+//	Timestamp
+//	JSON
 
 type TypeLen int64
 
@@ -224,19 +234,20 @@ func parseDDL(schema string) ([]*Table, error) {
 			}
 			tbl.NameDbSingular = inflection.Singular(tbl.Name)
 			tbl.Key = snaker.ForceCamelIdentifier(tbl.NameDbSingular)
-			colMap[v.Name] = make(map[string]*ColumnDef)
+			name := string(v.Name)
+			colMap[name] = make(map[string]*ColumnDef)
 			for _, c := range tbl.Columns {
-				colMap[v.Name][c.Name] = c
+				colMap[name][c.Name] = c
 			}
 			for _, p := range tbl.PrimaryKey {
-				if c, ok := colMap[v.Name][p.Column]; ok {
+				if c, ok := colMap[name][p.Column]; ok {
 					p.GoType = baseTypes[c.Type.Base]
 				} else {
 					log.Println("not found", p.Column)
 				}
 			}
 			tables = append(tables, tbl)
-			tblMap[v.Name] = tbl
+			tblMap[name] = tbl
 		case *spansql.CreateIndex:
 			//
 		default:
@@ -250,7 +261,8 @@ func parseDDL(schema string) ([]*Table, error) {
 		case *spansql.CreateTable:
 			//
 		case *spansql.CreateIndex:
-			if t, ok := tblMap[v.Table]; ok {
+			table := string(v.Table)
+			if t, ok := tblMap[table]; ok {
 				idx := &CreateIndex{}
 				if err := copier.Copy(idx, v); err != nil {
 					return nil, err
@@ -311,8 +323,10 @@ func process() error {
 		}
 		for _, vv := range v.Constraints {
 			if _, ok := added[pair{vv.ForeignKey.RefTable, v.Key}]; !ok {
-				nameMap[vv.ForeignKey.RefTable].RefTables = append(nameMap[vv.ForeignKey.RefTable].RefTables, v.Key)
-				added[pair{vv.ForeignKey.RefTable, v.Key}] = struct{}{}
+				if _, ok := nameMap[vv.ForeignKey.RefTable]; ok {
+					nameMap[vv.ForeignKey.RefTable].RefTables = append(nameMap[vv.ForeignKey.RefTable].RefTables, v.Key)
+					added[pair{vv.ForeignKey.RefTable, v.Key}] = struct{}{}
+				}
 			}
 		}
 	}
