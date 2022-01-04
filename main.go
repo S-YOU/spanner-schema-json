@@ -94,7 +94,13 @@ func (x ColumnDef) MarshalJSON() ([]byte, error) {
 	x.GoVarName = lowerCamel(x.GoName)
 	x.NameJson = strcase.ToLowerCamel(x.Name)
 	x.GoNames = snaker.SnakeToCamel(plural(x.Name))
+	if strings.HasSuffix(x.GoNames, "ids") {
+		x.GoNames = x.GoNames[:len(x.GoNames)-3] + "Ids"
+	}
 	x.GoVarNames = strcase.ToLowerCamel(x.GoNames)
+	if strings.HasSuffix(x.NameJson, "id") {
+		x.NameJson = x.NameJson[:len(x.NameJson)-2] + "Id"
+	}
 	x.Key = x.NameJson
 	x.GoType = baseTypes[x.Type.Base]
 	x.IsArray = x.Type.Array
