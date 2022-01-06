@@ -181,14 +181,15 @@ type Table struct {
 	GoShortName    string `json:"n"`
 	Key            string `json:"key"`
 
-	Columns     []*ColumnDef        `json:"fields"`
-	PrimaryKey  []*KeyPart          `json:"primaryKey"`
-	Interleave  *Interleave         `json:"interleave,omitempty"`
-	Indexes     []*CreateIndex      `json:"indexes,omitempty"`
-	Constraints []TableConstraint   `json:"-"`
-	Children    []string            `json:"children,omitempty"`
-	RefTables   []string            `json:"refTables,omitempty"`
-	Descendents map[string]struct{} `json:"-"`
+	Columns         []*ColumnDef        `json:"fields"`
+	PrimaryKey      []*KeyPart          `json:"primaryKey"`
+	Interleave      *Interleave         `json:"interleave,omitempty"`
+	Indexes         []*CreateIndex      `json:"indexes,omitempty"`
+	Constraints     []TableConstraint   `json:"-"`
+	Children        []string            `json:"children,omitempty"`
+	RefTables       []string            `json:"refTables,omitempty"`
+	Descendents     map[string]struct{} `json:"-"`
+	DependencyOrder int                 `json:"dependencyOrder"`
 }
 
 func (x Table) MarshalJSON() ([]byte, error) {
@@ -292,6 +293,7 @@ func parseDDL(schema string) ([]*Table, error) {
 
 type FileContent struct {
 	FileKind string   `json:"kind"`
+	SrcKind  string   `json:"srcKind"`
 	Data     []*Table `json:"data"`
 }
 
@@ -371,8 +373,12 @@ func process() error {
 		}
 		return parsed[i].Key < parsed[j].Key
 	})
+	for i, x := range parsed {
+		x.DependencyOrder = i + 1
+	}
 	fileContent := FileContent{
 		FileKind: "spanner",
+		SrcKind:  "spanner",
 		Data:     parsed,
 	}
 	parsedJson, err := json.MarshalIndent(fileContent, "", "\t")
