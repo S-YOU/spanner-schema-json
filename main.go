@@ -31,16 +31,6 @@ var baseTypes = []string{
 	"bool", "int64", "float64", "int", "string", "[]byte", "civil.Date", "time.Time", "string",
 }
 
-// Bool TypeBase = iota
-//	Int64
-//	Float64
-//	Numeric
-//	String
-//	Bytes
-//	Date
-//	Timestamp
-//	JSON
-
 type TypeLen int64
 
 func (x TypeLen) MarshalJSON() ([]byte, error) {
@@ -65,12 +55,12 @@ type ColumnDef struct {
 	GoNames        string `json:"Names"`
 	GoVarNames     string `json:"names"`
 	NameExactJson  string `json:"nameExact"`
-	//NamesJson string `json:"namesJson"`
-	GoType  string `json:"Type"`
-	Type    Type   `json:"-"`
-	IsArray bool   `json:"isArray"`
-	NotNull bool   `json:"notNull"`
-	Key     string `json:"key"`
+	GoType         string `json:"Type"`
+	GoBaseType     string `json:"baseType"`
+	Type           Type   `json:"-"`
+	IsArray        bool   `json:"isArray"`
+	NotNull        bool   `json:"notNull"`
+	Key            string `json:"key"`
 }
 
 func lowerCamel(s string) string {
@@ -116,6 +106,7 @@ func (x ColumnDef) MarshalJSON() ([]byte, error) {
 			x.GoType = "*" + x.GoType
 		}
 	}
+	x.GoBaseType = x.GoType
 	if x.Type.Array {
 		x.GoType = "[]" + x.GoType
 	}
@@ -140,28 +131,24 @@ type KeyPart struct {
 	NameDbSingular string `json:"nameDb"`
 	GoName         string `json:"Name"`
 	GoVarName      string `json:"name"`
-	//NameJson string `json:"nameJson"`
-	GoNames    string `json:"Names"`
-	GoVarNames string `json:"names"`
-	//NamesJson string `json:"namesJson"`
-	GoType string `json:"Type"`
-	//Desc   bool   `json:"desc"`
+	GoNames        string `json:"Names"`
+	GoVarNames     string `json:"names"`
+	GoType         string `json:"Type"`
+	GoBaseType     string `json:"baseType"`
 }
 
 func (x KeyPart) MarshalJSON() ([]byte, error) {
 	x.NameDbSingular = inflection.Singular(x.Column)
 	x.GoName = snaker.SnakeToCamel(x.NameDbSingular)
 	x.GoVarName = lowerCamel(x.GoName)
-	//x.NameJson = strcase.ToLowerCamel(x.Column)
 	x.GoNames = snaker.SnakeToCamel(plural(x.Column))
 	x.GoVarNames = lowerCamel(x.GoNames)
-	//x.NamesJson = strcase.ToLowerCamel(x.GoNames)
 	type MyKeyPart KeyPart
 	return json.Marshal(MyKeyPart(x))
 }
 
 type TableConstraint struct {
-	Name       string // may be empty
+	Name       string
 	ForeignKey ForeignKey
 }
 
@@ -214,12 +201,6 @@ type CreateIndex struct {
 	Interleave string   `json:"interleave"`
 }
 
-//func (x CreateIndex) MarshalJSON() ([]byte, error) {
-//	//x.GoName = snaker.SnakeToCamel(inflection.Singular(x.Name))
-//	type MyCreateIndex CreateIndex
-//	return json.Marshal(MyCreateIndex(x))
-//}
-
 func parseDDL(schema string) ([]*Table, error) {
 	ddl, err := spansql.ParseDDL("", schema)
 	if err != nil {
@@ -231,7 +212,6 @@ func parseDDL(schema string) ([]*Table, error) {
 	tables := make([]*Table, 0, len(ddl.List))
 	colMap = make(map[string]map[string]*ColumnDef)
 
-	// collect table
 	for _, l := range ddl.List {
 		switch v := l.(type) {
 		case *spansql.CreateTable:
@@ -256,17 +236,14 @@ func parseDDL(schema string) ([]*Table, error) {
 			tables = append(tables, tbl)
 			tblMap[name] = tbl
 		case *spansql.CreateIndex:
-			//
 		default:
 			log.Printf("unknown ddl type: %v\n", reflect.TypeOf(l))
 		}
 	}
 
-	// collect indexes
 	for _, l := range ddl.List {
 		switch v := l.(type) {
 		case *spansql.CreateTable:
-			//
 		case *spansql.CreateIndex:
 			table := string(v.Table)
 			if t, ok := tblMap[table]; ok {
