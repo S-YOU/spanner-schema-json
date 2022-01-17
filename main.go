@@ -201,6 +201,14 @@ type CreateIndex struct {
 	Interleave string   `json:"interleave"`
 }
 
+func IDToString(ids []spansql.ID) []string {
+	ret := make([]string, len(ids))
+	for i, x := range ids {
+		ret[i] = string(x)
+	}
+	return ret
+}
+
 func parseDDL(schema string) ([]*Table, error) {
 	ddl, err := spansql.ParseDDL("", schema)
 	if err != nil {
@@ -231,6 +239,19 @@ func parseDDL(schema string) ([]*Table, error) {
 					p.GoType = baseTypes[c.Type.Base]
 				} else {
 					log.Println("not found", p.Column)
+				}
+			}
+			tbl.Constraints = make([]TableConstraint, 0, len(v.Constraints))
+			for _, c := range v.Constraints {
+				if fk, ok := c.Constraint.(spansql.ForeignKey); ok {
+					tbl.Constraints = append(tbl.Constraints, TableConstraint{
+						Name: string(c.Name),
+						ForeignKey: ForeignKey{
+							Columns:    IDToString(fk.Columns),
+							RefTable:   string(fk.RefTable),
+							RefColumns: IDToString(fk.RefColumns),
+						},
+					})
 				}
 			}
 			tables = append(tables, tbl)
