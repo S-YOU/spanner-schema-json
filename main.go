@@ -45,7 +45,6 @@ type Type struct {
 	Base  TypeBase `json:"-"`
 	Len   TypeLen  `json:"len"`
 }
-
 type ColumnDef struct {
 	Name           string `json:"namesDb"`
 	NameDbSingular string `json:"nameDb"`
@@ -76,7 +75,6 @@ var shortNameRe = regexp.MustCompile("[A-Z]")
 func shortName(s string) string {
 	return strings.ToLower(strings.Join(shortNameRe.FindAllString(s, -1), ""))
 }
-
 func (x ColumnDef) MarshalJSON() ([]byte, error) {
 	x.NameExactJson = x.Name
 	x.NameDbSingular = inflection.Singular(x.Name)
@@ -88,7 +86,7 @@ func (x ColumnDef) MarshalJSON() ([]byte, error) {
 		x.GoNames = x.GoNames[:len(x.GoNames)-3] + "Ids"
 	}
 	x.GoVarNames = strcase.ToLowerCamel(x.GoNames)
-	if strings.HasSuffix(x.NameJson, "id") {
+	if x.NameJson != "id" && strings.HasSuffix(x.NameJson, "id") {
 		x.NameJson = x.NameJson[:len(x.NameJson)-2] + "Id"
 	}
 	x.Key = x.NameJson
@@ -125,7 +123,6 @@ type Interleave struct {
 	Parent   string   `json:"string"`
 	OnDelete OnDelete `json:"onDelete"`
 }
-
 type KeyPart struct {
 	Column         string `json:"namesDb"`
 	NameDbSingular string `json:"nameDb"`
@@ -151,23 +148,20 @@ type TableConstraint struct {
 	Name       string
 	ForeignKey ForeignKey
 }
-
 type ForeignKey struct {
 	Columns    []string
 	RefTable   string
 	RefColumns []string
 }
-
 type Table struct {
-	Name           string `json:"namesDb"`
-	NameDbSingular string `json:"nameDb"`
-	GoName         string `json:"Name"`
-	GoVarName      string `json:"name"`
-	GoNames        string `json:"Names"`
-	GoVarNames     string `json:"names"`
-	GoShortName    string `json:"n"`
-	Key            string `json:"key"`
-
+	Name            string              `json:"namesDb"`
+	NameDbSingular  string              `json:"nameDb"`
+	GoName          string              `json:"Name"`
+	GoVarName       string              `json:"name"`
+	GoNames         string              `json:"Names"`
+	GoVarNames      string              `json:"names"`
+	GoShortName     string              `json:"n"`
+	Key             string              `json:"key"`
 	Columns         []*ColumnDef        `json:"fields"`
 	PrimaryKey      []*KeyPart          `json:"primaryKey"`
 	Interleave      *Interleave         `json:"interleave,omitempty"`
@@ -190,15 +184,13 @@ func (x Table) MarshalJSON() ([]byte, error) {
 }
 
 type CreateIndex struct {
-	Name    string     `json:"name"`
-	Table   string     `json:"table"`
-	Columns []*KeyPart `json:"fields"`
-
-	Unique       bool `json:"unique"`
-	NullFiltered bool `json:"nullFiltered"`
-
-	Storing    []string `json:"storing"`
-	Interleave string   `json:"interleave"`
+	Name         string     `json:"name"`
+	Table        string     `json:"table"`
+	Columns      []*KeyPart `json:"fields"`
+	Unique       bool       `json:"unique"`
+	NullFiltered bool       `json:"nullFiltered"`
+	Storing      []string   `json:"storing"`
+	Interleave   string     `json:"interleave"`
 }
 
 func IDToString(ids []spansql.ID) []string {
@@ -208,18 +200,15 @@ func IDToString(ids []spansql.ID) []string {
 	}
 	return ret
 }
-
 func parseDDL(schema string) ([]*Table, error) {
 	ddl, err := spansql.ParseDDL("", schema)
 	if err != nil {
 		return nil, err
 	}
-
 	var colMap map[string]map[string]*ColumnDef
 	tblMap := make(map[string]*Table, len(ddl.List))
 	tables := make([]*Table, 0, len(ddl.List))
 	colMap = make(map[string]map[string]*ColumnDef)
-
 	for _, l := range ddl.List {
 		switch v := l.(type) {
 		case *spansql.CreateTable:
@@ -261,7 +250,6 @@ func parseDDL(schema string) ([]*Table, error) {
 			log.Printf("unknown ddl type: %v\n", reflect.TypeOf(l))
 		}
 	}
-
 	for _, l := range ddl.List {
 		switch v := l.(type) {
 		case *spansql.CreateTable:
@@ -285,7 +273,6 @@ func parseDDL(schema string) ([]*Table, error) {
 			log.Printf("unknown ddl type: %v\n", reflect.TypeOf(l))
 		}
 	}
-
 	return tables, nil
 }
 
@@ -305,7 +292,6 @@ func collectDescendents(keys map[string]struct{}, m map[string]*Table, out *Tabl
 		collectDescendents(m[k].Descendents, m, m[k])
 	}
 }
-
 func process() error {
 	b, err := os.ReadFile(*ddlFile)
 	if err != nil {
@@ -383,7 +369,6 @@ func process() error {
 	if err != nil {
 		return err
 	}
-
 	if *out == "-" {
 		if _, err := os.Stdout.Write(parsedJson); err != nil {
 			return err
@@ -397,10 +382,8 @@ func process() error {
 			return err
 		}
 	}
-
 	return nil
 }
-
 func plural(s string) string {
 	out := inflection.Plural(s)
 	if out == "information" {
@@ -410,10 +393,8 @@ func plural(s string) string {
 	}
 	return out
 }
-
 func main() {
 	flag.Parse()
-
 	if err := process(); err != nil {
 		log.Fatalln(err)
 	}
