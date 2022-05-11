@@ -100,6 +100,8 @@ func (x ColumnDef) MarshalJSON() ([]byte, error) {
 			x.GoType = "spanner.NullInt64"
 		case "bool":
 			x.GoType = "spanner.NullBool"
+		case "time.Time":
+			x.GoType = "spanner.NullTime"
 		default:
 			x.GoType = "*" + x.GoType
 		}
